@@ -4,11 +4,13 @@ version = "0.1.0"
 description = ""
 authors = ["Rajesh Kumar <rkumar70900@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
 marqo = "^3.9.1"
 pandas = "^2.2.3"
+pymongo = "^4.10.1"
 
 
 [build-system]
