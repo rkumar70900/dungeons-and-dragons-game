@@ -1,4 +1,5 @@
 from pymongo import MongoClient, errors
+import os
 
 try:
     # Attempt connection
@@ -12,16 +13,19 @@ except errors.ServerSelectionTimeoutError as err:
 
 db = client["context_data"]
 
-collection = db["classes"]
+collection = db["backgrounds"]
 
-name = "alchemist"
+base_name = 'C://Users//rajes//Documents//GitHub//dungeons-and-dragons-game//web_scraping//backgrounds'
+files = os.listdir(base_name)
 
-with open(".//classes//alchemist.txt") as file:
-    data = file.read()
+for file in files:
+    file_name = file.replace('.txt', '')
 
-doc = {"name": name, "description": data}
+    with open(base_name + '//' + file, 'r', encoding='utf-8') as f:
+        data = f.read()
 
-collection.insert_one(doc)
+    doc = {"name": file_name, "description": data}
 
-for doc in collection.find():
-    print(doc)
+    collection.insert_one(doc)
+
+    print("record " + file_name + " inserted into " + base_name.split('//')[-1])
