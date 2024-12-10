@@ -1,9 +1,4 @@
 dnd-env/
 poetry.lock
 context_data/
-web_scraping/classes/
-web_scraping/backgrounds/
-web_scraping/magic items/
-web_scraping/monsters/
-web_scraping/races/
-web_scraping/spells/
+feature-pipeline/data/
