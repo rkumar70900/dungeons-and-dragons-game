@@ -52,13 +52,13 @@ def create_or_update_index(index_name, chunks, batch_size=128):
 
     mq_client.index(index_name).add_documents(chunks, tensor_fields=['content', 'Title'], client_batch_size=batch_size)
 
-# chunks = fetch_and_chunk_data("backgrounds")
-# create_or_update_index("backgrounds", chunks)
+chunks = fetch_and_chunk_data("races")
+create_or_update_index("races", chunks)
 
-results = mq_client.index("backgrounds").search(
-    q="information about academic", search_method='LEXICAL', limit=2
-)
-print(results)
+# results = mq_client.index("classes").search(
+#     q="information about alchemist", search_method='LEXICAL', limit=4
+# )
+# print(results)
 
 def delete_index(index_name):
     """
