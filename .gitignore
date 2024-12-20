@@ -2,3 +2,5 @@ dnd-env/
 poetry.lock
 context_data/
 feature-pipeline/data/
+inference_pipeline/__pycache__
+training_pipeline/__pycache__
