@@ -6,8 +6,9 @@ from training_pipeline import ask_llm
 class dndCharacter():
     def __init__(self):
         self.dep = dep.dependencies()
-        self.ask = ask_llm.askLLM("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")
+        self.ask = ask_llm.askLLM()
         self.abilities = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
+        self.client = self.dep.connect_mongo()
 
     def ability_scores(self):
         raw_scores = [self.dep.drop_low_sum(6, 4) for _ in range(6)]
@@ -25,3 +26,17 @@ class dndCharacter():
             attr: scores[i] for i, attr in enumerate(matches + non_matches)
         }
         return assigned_scores
+    
+    def get_race(self):
+        collection = self.dep.get_context_collection(self.client, "races")
+        return self.dep.get_distinct_names(collection)
+    
+    def get_class(self):
+        collection = self.dep.get_context_collection(self.client, "classes")
+        return self.dep.get_distinct_names(collection)
+    
+    def get_background(self):
+        collection = self.dep.get_context_collection(self.client, "backgrounds")
+        return self.dep.get_distinct_names(collection)
+
+

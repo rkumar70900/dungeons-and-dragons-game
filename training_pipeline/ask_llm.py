@@ -2,9 +2,9 @@ import marqo
 from openai import OpenAI
 
 class askLLM():
-    def __init__(self, api_key):
+    def __init__(self):
         self.mq_client = marqo.Client(url='http://localhost:8882')
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key="")
     
     def extract_context(self, about, name):
 
