@@ -15,13 +15,12 @@ class dndCharacter():
         sorted_raw_scores = sorted(raw_scores, reverse=True)
         return sorted_raw_scores
     
-    def assign_scores(self, class_name):
-        class_abilities = self.ask.get_abilities(class_name)
+    def assign_scores(self, class_name, class_context):
+        class_abilities = self.ask.get_abilities(class_name, class_context)
         matches = [attr for attr in self.abilities if re.search(rf'\b{attr}\b', class_abilities, re.IGNORECASE)]
         non_matches = [attr for attr in self.abilities if attr not in matches]
-        random.shuffle(non_matches) 
+        random.shuffle(non_matches)
         scores = self.ability_scores()
-        print(scores)
         assigned_scores = {
             attr: scores[i] for i, attr in enumerate(matches + non_matches)
         }
@@ -29,14 +28,31 @@ class dndCharacter():
     
     def get_race(self):
         collection = self.dep.get_context_collection(self.client, "races")
-        return self.dep.get_distinct_names(collection)
+        races = self.dep.get_distinct_names(collection)
+        current_choice = random.choice(races)
+        return current_choice
     
     def get_class(self):
         collection = self.dep.get_context_collection(self.client, "classes")
-        return self.dep.get_distinct_names(collection)
+        classes = self.dep.get_distinct_names(collection)
+        current_choice = random.choice(classes)
+        return current_choice
     
     def get_background(self):
         collection = self.dep.get_context_collection(self.client, "backgrounds")
-        return self.dep.get_distinct_names(collection)
+        backgrounds = self.dep.get_distinct_names(collection)
+        current_choice = random.choice(backgrounds)
+        return current_choice
 
+    def get_class_context(self, class_name):
+        class_context = self.ask.extract_context("classes", class_name)
+        return class_context
+
+    def get_race_context(self, race_name):
+        race_context = self.ask.extract_context("races", race_name)
+        return race_context
+
+    def get_background_context(self, background_name):
+        background_context = self.ask.extract_context("backgrounds", background_name)
+        return background_context
 
