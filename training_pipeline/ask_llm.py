@@ -16,9 +16,7 @@ class askLLM():
 
         return context
 
-    def get_abilities(self, class_name, model="gpt-3.5-turbo"):
-
-        context_class = self.extract_context("classes", class_name)
+    def get_abilities(self, class_name, class_context, model="gpt-3.5-turbo"):
 
         user_query = f'which two abilities out of strength, dexterity, constitution, \
                         intelligence, wisdom and charisma does the character belonging \
@@ -26,7 +24,7 @@ class askLLM():
         
         messages = [
             {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
-            {"role": "user", "content": f"class_context: {context_class}"},
+            {"role": "user", "content": f"class_context: {class_context}"},
             {"role": "user", "content": f"Question: {user_query}"}
         ]
         
