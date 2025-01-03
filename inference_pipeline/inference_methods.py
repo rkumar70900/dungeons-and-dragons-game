@@ -55,4 +55,15 @@ class dndCharacter():
     def get_background_context(self, background_name):
         background_context = self.ask.extract_context("backgrounds", background_name)
         return background_context
+    
+    def ability_modifier(self, strength, dexterity, constitution, intelligence, wisdom, charisma):
+        ability_modifier = {}
+        ability_modifier['strength'] = self.dep.get_ability_modifier(strength)
+        ability_modifier['dexterity'] = self.dep.get_ability_modifier(dexterity)
+        ability_modifier['constitution'] = self.dep.get_ability_modifier(constitution)
+        ability_modifier['intelligence'] = self.dep.get_ability_modifier(intelligence)
+        ability_modifier['wisdom'] = self.dep.get_ability_modifier(wisdom)
+        ability_modifier['charisma'] = self.dep.get_ability_modifier(charisma)
+        return ability_modifier
+
 
