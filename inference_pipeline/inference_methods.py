@@ -65,5 +65,9 @@ class dndCharacter():
         ability_modifier['wisdom'] = self.dep.get_ability_modifier(wisdom)
         ability_modifier['charisma'] = self.dep.get_ability_modifier(charisma)
         return ability_modifier
+    
+    def proficiency_modifier(self):
+        proficiency = {"proficiency_modifier": 2}
+        return proficiency
 
 
