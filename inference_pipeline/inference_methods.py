@@ -69,5 +69,9 @@ class dndCharacter():
     def proficiency_modifier(self):
         proficiency = {"proficiency_modifier": 2}
         return proficiency
+    
+    def saving_throws(self, class_name, class_context):
+        class_saving_throws = self.ask.get_saving_throws(class_name, class_context)
+        return class_saving_throws
 
 

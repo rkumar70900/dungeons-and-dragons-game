@@ -44,3 +44,7 @@ def get_ability_modifier(strength_score: int, dexterity_score: int, constitution
 @app.get("/proficieny_modifier")
 def get_proficiency_modifier():
     return {"proficiency_modifier": inf.proficiency_modifier()}
+
+@app.get("/saving_throws")
+def get_saving_throws(class_name: str, class_context: str):
+    return {"saving_throws": inf.saving_throws(class_name, class_context)}
