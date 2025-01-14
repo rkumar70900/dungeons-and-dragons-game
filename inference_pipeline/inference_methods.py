@@ -15,8 +15,11 @@ class dndCharacter():
         sorted_raw_scores = sorted(raw_scores, reverse=True)
         return sorted_raw_scores
     
-    def assign_scores(self, class_name, class_context):
+    def get_abilities(self, class_name, class_context):
         class_abilities = self.ask.get_abilities(class_name, class_context)
+        return class_abilities
+    
+    def assign_scores(self, class_abilities):
         matches = [attr for attr in self.abilities if re.search(rf'\b{attr}\b', class_abilities, re.IGNORECASE)]
         non_matches = [attr for attr in self.abilities if attr not in matches]
         random.shuffle(non_matches)
