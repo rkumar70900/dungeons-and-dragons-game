@@ -21,16 +21,8 @@ async def delete_redis_on_swagger_refresh(request: Request, call_next):
     response = await call_next(request)
     return response
 
-
-# @app.get("/start_session")
-# def start_session(response: Response):
-#     session_id = str(uuid.uuid4())
-#     response.set_cookie(key="session_id", value=session_id, max_age=SESSION_TIMEOUT)
-#     return {"message": "session started", "session_id": session_id}
-
 @app.post('/store-output/{endpoint_name}')
 def store_output(endpoint_name: str, data: dict, session_id: str = Cookie(None)):
-    print(session_id)
     if not session_id:
         raise HTTPException(status_code=400, detail="Session ID missing")
     redis_key = f"{session_id}:{endpoint_name}"
@@ -116,13 +108,38 @@ def get_ability_scores():
     return output_abilities
 
 @app.get("/assign_ability_modifier")
-def get_ability_modifier(strength_score: int, dexterity_score: int, constitution_score: int, intelligence_score: int, wisdom_score: int, charisma_score: int):
-    return {"assigned_modifiers": inf.ability_modifier(strength_score, dexterity_score, constitution_score, intelligence_score, wisdom_score, charisma_score)}
+def get_ability_modifier():
+    if not get_output("get_ability_scores"):
+        raise HTTPException(status_code=400, detail="Ability scores not assigned")
+    output_ability_scores = get_output("get_ability_scores")['data']
+    if not get_output("get_ability_modifier"):
+        ability_modifier = inf.ability_modifier(output_ability_scores)
+        store_output("get_ability_modifier", ability_modifier)
+    output_ability_modifier = get_output("get_ability_modifier")
+    return output_ability_modifier
 
 @app.get("/proficieny_modifier")
 def get_proficiency_modifier():
-    return {"proficiency_modifier": inf.proficiency_modifier()}
+    if not get_output("get_proficiency_modifier"):
+        proficiency_modifier = inf.proficiency_modifier()
+        store_output("get_proficiency_modifier", proficiency_modifier)
+    output_proficiency_modifier = get_output("get_proficiency_modifier")
+    return output_proficiency_modifier
 
 @app.get("/saving_throws")
-def get_saving_throws(class_name: str, class_context: str):
-    return {"saving_throws": inf.saving_throws(class_name, class_context)}
+def get_saving_throws():
+    if not get_output("get_class") and get_output("get_class_context"):
+        raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
+    class_name = get_output("get_class")['data']
+    class_context = get_output("get_class_context")['data']
+    if not get_output("get_ability_scores"):
+        raise HTTPException(status_code=400, detail="Ability scores not assigned")
+    ability_scores = get_output("get_ability_scores")['data']
+    if not get_output("get_proficiency_modifier"):
+        raise HTTPException(status_code=400, detail="Proficiency modifier not assigned")
+    proficiency_modifier = get_output("get_proficiency_modifier")['data']['proficiency_modifier']
+    if not get_output("get_saving_throws"):
+        saving_throws = inf.saving_throws(class_name, class_context, ability_scores, proficiency_modifier)
+        store_output("get_saving_throws", saving_throws)
+    output_saving_throws = get_output("get_saving_throws")
+    return output_saving_throws

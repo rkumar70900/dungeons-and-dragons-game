@@ -73,8 +73,15 @@ class dndCharacter():
         proficiency = {"proficiency_modifier": 2}
         return proficiency
     
-    def saving_throws(self, class_name, class_context):
+    def saving_throws(self, class_name, class_context, ability_scores, proficiency_modifier):
+        saving_throws_scores = {}
         class_saving_throws = self.ask.get_saving_throws(class_name, class_context)
-        return class_saving_throws
+        matches = [attr for attr in self.abilities if re.search(rf'\b{attr}\b', class_saving_throws, re.IGNORECASE)]
+        non_matches = [attr for attr in self.abilities if attr not in matches]
+        for match in matches:
+            saving_throws_scores[match] = ability_scores[match] + proficiency_modifier
+        for non_match in non_matches:
+            saving_throws_scores[non_match] = ability_scores[non_match]
+        return saving_throws_scores
 
 
