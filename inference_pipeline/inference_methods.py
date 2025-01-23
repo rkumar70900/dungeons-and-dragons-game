@@ -8,6 +8,15 @@ class dndCharacter():
         self.dep = dep.dependencies()
         self.ask = ask_llm.askLLM()
         self.abilities = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
+        self.ability_skills = {"dexterity": ["Acrobatics", "Sleight of Hand", "Stealth"], 
+                           "intelligence": ["Arcana", "History", "Investigation", "Nature", "Religion"], 
+                           "wisdom": ["Animal Handling", "Insight", "Medicine", "Perception", "Survival"], 
+                           "charisma": ["Deception", "Intimidation", "Performance", "Persuasion"], 
+                           "strength": ["Athletics"], 
+                           "constitution": [] }
+        self.skills = ["Acrobatics", "Sleight of Hand", "Stealth", "Arcana", "History", "Investigation", "Nature", "Religion",
+                       "Animal Handling", "Insight", "Medicine", "Perception", "Survival", "Deception", "Intimidation", "Performance", "Persuasion",
+                       "Athletics"]
         self.client = self.dep.connect_mongo()
 
     def ability_scores(self):
@@ -73,8 +82,28 @@ class dndCharacter():
         proficiency = {"proficiency_modifier": 2}
         return proficiency
     
-    def saving_throws(self, class_name, class_context):
+    def saving_throws(self, class_name, class_context, ability_scores, proficiency_modifier):
+        saving_throws_scores = {}
         class_saving_throws = self.ask.get_saving_throws(class_name, class_context)
-        return class_saving_throws
+        matches = [attr for attr in self.abilities if re.search(rf'\b{attr}\b', class_saving_throws, re.IGNORECASE)]
+        non_matches = [attr for attr in self.abilities if attr not in matches]
+        for match in matches:
+            saving_throws_scores[match] = ability_scores[match] + proficiency_modifier
+        for non_match in non_matches:
+            saving_throws_scores[non_match] = ability_scores[non_match]
+        return saving_throws_scores
+    
+    def get_skills(self, class_name, background_name, class_context, background_context, ability_scores, proficiency_modifier):
+        skill_scores = {}
+        class_skills = self.ask.get_skills(class_name, background_name, class_context, background_context)
+        matches = [attr for attr in self.skills if re.search(rf'\b{attr}\b', class_skills, re.IGNORECASE)]
+        for key, value in self.ability_skills.items():
+            if any(val in value for val in matches):
+                for val in value:
+                    skill_scores[val] = ability_scores[key] + proficiency_modifier
+            else:
+                for val in value:
+                    skill_scores[val] = ability_scores[key]
+        return skill_scores
 
 

@@ -35,4 +35,47 @@ class askLLM():
         )
         
         return response.choices[0].message.content
+    
+    def get_saving_throws(self, class_name, class_context, model="gpt-3.5-turbo"):
+
+        user_query = f'which two abilities out of strength, dexterity, constitution, \
+                        intelligence, wisdom and charisma does the character belonging \
+                        to {class_name} have for saving throws. do your thinking and give me only the ability names.'
+        
+        messages = [
+            {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
+            {"role": "user", "content": f"class_context: {class_context}"},
+            {"role": "user", "content": f"Question: {user_query}"}
+        ]
+        
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
+    
+    def get_skills(self, class_name, background_name, class_context, background_context, model="gpt-3.5-turbo"):
+
+        user_query = f'which skills out of actrobatics, animal handling, arcana, athletics, \
+                        deception, history, insight, intimidation, investigation, medicine, \
+                        nature, perception, performance, persuasion, religion, sleight of hand, \
+                        stealth, survival does the character belonging \
+                        to {class_name} and {background_name} have. do your thinking and give me only the skill names.'
+        
+        messages = [
+            {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
+            {"role": "user", "content": f"class_context: {class_context}"},
+            {"role": "user", "content": f"background_context: {background_context}"},
+            {"role": "user", "content": f"Question: {user_query}"}
+        ]
+        
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content
         
