@@ -64,7 +64,10 @@ def get_background():
     return output_background
 
 @app.get("/class_context")
-def get_class_context(class_name: str):
+def get_class_context():
+    if not get_output("get_class"):
+        raise HTTPException(status_code=400, detail="Class not assigned")
+    class_name = get_output("get_class")['data']
     if not get_output("get_class_context"):
         class_context = inf.get_class_context(class_name)
         store_output("get_class_context", class_context)
@@ -80,7 +83,10 @@ def get_race_context(race_name: str):
     return output_race_context
 
 @app.get("/background_context")
-def get_background_context(background_name: str):
+def get_background_context():
+    if not get_output("get_background"):
+        raise HTTPException(status_code=400, detail="Background not assigned")
+    background_name = get_output("get_background")['data']
     if not get_output("get_background_context"):
         background_context = inf.get_background_context(background_name)
         store_output("get_background_context", background_context)
@@ -88,7 +94,11 @@ def get_background_context(background_name: str):
     return output_background_context
 
 @app.get("/abilities")
-def get_abilities(class_name: str, class_context: str):
+def get_abilities():
+    if not get_output("get_class") and get_output("get_class_context"):
+        raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
+    class_name = get_output("get_class")['data']
+    class_context = get_output("get_class_context")['data']
     if not get_output("get_abilities"):
         class_abilities = inf.get_abilities(class_name, class_context)
         store_output("get_abilities", class_abilities)
@@ -143,3 +153,25 @@ def get_saving_throws():
         store_output("get_saving_throws", saving_throws)
     output_saving_throws = get_output("get_saving_throws")
     return output_saving_throws
+
+@app.get("/skills")
+def get_skills():
+    if not get_output("get_class") and get_output("get_class_context"):
+        raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
+    class_name = get_output("get_class")['data']
+    class_context = get_output("get_class_context")['data']
+    if not get_output("get_background") and get_output("get_background_context"):   
+        raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
+    background_name = get_output("get_background")['data']
+    background_context = get_output("get_background_context")['data']
+    if not get_output("get_ability_scores"):
+        raise HTTPException(status_code=400, detail="Ability scores not assigned")
+    ability_scores = get_output("get_ability_scores")['data']
+    if not get_output("get_proficiency_modifier"):
+        raise HTTPException(status_code=400, detail="Proficiency modifier not assigned")
+    proficiency_modifier = get_output("get_proficiency_modifier")['data']['proficiency_modifier']
+    if not get_output("get_skills"):
+        skills = inf.get_skills(class_name, background_name, class_context, background_context, ability_scores, proficiency_modifier)
+        store_output("get_skills", skills)
+    output_skills = get_output("get_skills")
+    return output_skills
