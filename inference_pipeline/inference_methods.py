@@ -68,14 +68,14 @@ class dndCharacter():
         background_context = self.ask.extract_context("backgrounds", background_name)
         return background_context
     
-    def ability_modifier(self, strength, dexterity, constitution, intelligence, wisdom, charisma):
+    def ability_modifier(self, ability_scores):
         ability_modifier = {}
-        ability_modifier['strength'] = self.dep.get_ability_modifier(strength)
-        ability_modifier['dexterity'] = self.dep.get_ability_modifier(dexterity)
-        ability_modifier['constitution'] = self.dep.get_ability_modifier(constitution)
-        ability_modifier['intelligence'] = self.dep.get_ability_modifier(intelligence)
-        ability_modifier['wisdom'] = self.dep.get_ability_modifier(wisdom)
-        ability_modifier['charisma'] = self.dep.get_ability_modifier(charisma)
+        ability_modifier['strength'] = self.dep.get_ability_modifier(ability_scores["strength"])
+        ability_modifier['dexterity'] = self.dep.get_ability_modifier(ability_scores["dexterity"])
+        ability_modifier['constitution'] = self.dep.get_ability_modifier(ability_scores["constitution"])
+        ability_modifier['intelligence'] = self.dep.get_ability_modifier(ability_scores["intelligence"])
+        ability_modifier['wisdom'] = self.dep.get_ability_modifier(ability_scores["wisdom"])
+        ability_modifier['charisma'] = self.dep.get_ability_modifier(ability_scores["charisma"])
         return ability_modifier
     
     def proficiency_modifier(self):
@@ -105,5 +105,9 @@ class dndCharacter():
                 for val in value:
                     skill_scores[val] = ability_scores[key]
         return skill_scores
+    
+    def get_passive_perception(self, perception):
+        passive_perception = 10 + perception
+        return passive_perception
 
 

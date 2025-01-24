@@ -175,3 +175,14 @@ def get_skills():
         store_output("get_skills", skills)
     output_skills = get_output("get_skills")
     return output_skills
+
+@app.get("/passive_perception")
+def get_passive_perception():
+    if not get_output("get_skills"):
+        raise HTTPException(status_code=400, detail="Skills not assigned")
+    perception = get_output("get_skills")['data']['Perception']
+    if not get_output("get_passive_perception"):
+        passive_perception = inf.get_passive_perception(perception)
+        store_output("get_passive_perception", passive_perception)
+    output_passive_perception = get_output("get_passive_perception")
+    return output_passive_perception
