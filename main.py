@@ -186,3 +186,19 @@ def get_passive_perception():
         store_output("get_passive_perception", passive_perception)
     output_passive_perception = get_output("get_passive_perception")
     return output_passive_perception
+
+@app.get("/proficiencies_languages")
+def get_proficiencies_languages():
+    if not get_output("get_class") and get_output("get_class_context"):
+        raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
+    if not get_output("get_background") and get_output("get_background_context"):   
+        raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
+    class_name = get_output("get_class")['data']
+    class_context = get_output("get_class_context")['data']
+    background_name = get_output("get_background")['data']
+    background_context = get_output("get_background_context")['data']
+    if not get_output("get_proficiencies_languages"):
+        proficiencies_languages = inf.get_proficiencies_languages(class_name, background_name, class_context, background_context)
+        store_output("get_proficiencies_languages", proficiencies_languages)
+    output_proficiencies_languages = get_output("get_proficiencies_languages")
+    return output_proficiencies_languages
