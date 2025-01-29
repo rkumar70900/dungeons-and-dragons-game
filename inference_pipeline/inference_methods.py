@@ -109,5 +109,9 @@ class dndCharacter():
     def get_passive_perception(self, perception):
         passive_perception = 10 + perception
         return passive_perception
+    
+    def get_proficiencies_languages(self, class_name, background_name, class_context, background_context):
+        proficiencies = self.ask.get_proficiencies_languages(class_name, background_name, class_context, background_context)
+        return proficiencies
 
 

@@ -1,10 +1,11 @@
 import marqo
 from openai import OpenAI
+import json
 
 class askLLM():
     def __init__(self):
         self.mq_client = marqo.Client(url='http://localhost:8882')
-        self.client = OpenAI(api_key="")
+        self.client = OpenAI(api_key="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")
     
     def extract_context(self, about, name):
 
@@ -78,4 +79,27 @@ class askLLM():
         )
         
         return response.choices[0].message.content
+
+    def get_proficiencies_languages(self, class_name, background_name, class_context, background_context, model="gpt-3.5-turbo"):
+
+        user_query = f'which armor, weapons, kits, instruments, languages does the character belonging \
+                        to {class_name} and {background_name} have. Consider both the class and background and give me only one list. \
+                             do your thinking before answering. \
+                            I need the output in a json formatted string in this way \
+                                "armor": [list here], "weapons": [list here], "kits": [list here], "instruments": [list here], "languages": [list here]'
+        
+        messages = [
+            {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
+            {"role": "user", "content": f"class_context: {class_context}"},
+            {"role": "user", "content": f"background_context: {background_context}"},
+            {"role": "user", "content": f"Question: {user_query}"}
+        ]
+        
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.7
+        )
+        
+        return json.loads(response.choices[0].message.content)
         
