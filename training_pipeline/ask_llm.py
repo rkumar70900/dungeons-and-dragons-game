@@ -84,6 +84,7 @@ class askLLM():
 
         user_query = f'which armor, weapons, kits, instruments, languages does the character belonging \
                         to {class_name} and {background_name} have. Consider both the class and background and give me only one list. \
+                             Along with this, for every armor, weapon, kit and instrument give me a bonus associated with them when used in the game \
                              do your thinking before answering. \
                             I need the output in a json formatted string in this way \
                                 "armor": [list here], "weapons": [list here], "kits": [list here], "instruments": [list here], "languages": [list here]'
@@ -101,5 +102,28 @@ class askLLM():
             temperature=0.7
         )
         
+        return json.loads(response.choices[0].message.content)
+    
+    def get_equipment_money(self, class_name, background_name, class_context, background_context, model="gpt-3.5-turbo"):
+
+        user_query = f'which equipment does the character belonging to {class_name} and {background_name} have. \
+                        Consider both the class and background and give me only one list. \
+                        The class will have a list of starting items and the background contains some additional items. \
+                            The class contains the starting wealth for the character.\
+                                Give me the output in a json formatted string in this way \
+                                    "equipment": [list here], "money": amount here'
+        
+        messages = [
+            {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
+            {"role": "user", "content": f"class_context: {class_context}"},
+            {"role": "user", "content": f"background_context: {background_context}"},
+            {"role": "user", "content": f"Question: {user_query}"}
+        ]
+        
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.7
+        )
         return json.loads(response.choices[0].message.content)
         
