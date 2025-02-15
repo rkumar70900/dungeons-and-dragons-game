@@ -202,3 +202,19 @@ def get_proficiencies_languages():
         store_output("get_proficiencies_languages", proficiencies_languages)
     output_proficiencies_languages = get_output("get_proficiencies_languages")
     return output_proficiencies_languages
+
+@app.get("/equipment_money")
+def get_equipment_money():
+    if not get_output("get_class") and get_output("get_class_context"):
+        raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
+    if not get_output("get_background") and get_output("get_background_context"):   
+        raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
+    class_name = get_output("get_class")['data']
+    class_context = get_output("get_class_context")['data']
+    background_name = get_output("get_background")['data']
+    background_context = get_output("get_background_context")['data']
+    if not get_output("get_equipment_money"):
+        equipment_money = inf.get_equipment_money(class_name, background_name, class_context, background_context)
+        store_output("get_equipment_money", equipment_money)
+    output_equipment_money = get_output("get_equipment_money")
+    return output_equipment_money

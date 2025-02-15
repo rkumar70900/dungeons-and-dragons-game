@@ -113,5 +113,9 @@ class dndCharacter():
     def get_proficiencies_languages(self, class_name, background_name, class_context, background_context):
         proficiencies = self.ask.get_proficiencies_languages(class_name, background_name, class_context, background_context)
         return proficiencies
+    
+    def get_equipment_money(self, class_name, background_name, class_context, background_context):
+        equipment_money = self.ask.get_equipment_money(class_name, background_name, class_context, background_context)
+        return equipment_money
 
 

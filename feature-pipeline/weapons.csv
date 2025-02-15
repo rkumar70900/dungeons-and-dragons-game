@@ -1,0 +1,39 @@
+weapon_name,weapons_type,weapons_category,cost,damage,range,weight,properties
+club,melee,simple,1 sp,1d4 bludgeoning,,2 lb.,light
+dagger,melee,simple,2 gp,1d4 piercing,20/60,1 lb.,"finesse, light, thrown"
+greatclub,melee,simple,2 sp,1d8 bludgeoning,,10 lb.,two-handed
+handaxe,melee,simple,5 gp,1d6 slashing,20/60,2 lb.,"light, thrown"
+javelin,melee,simple,5 sp,1d6 piercing,30/120,2 lb.,thrown
+light hammer,melee,simple,2 gp,1d4 bludgeoning,20/60,2 lb.,"light, thrown"
+mace,melee,simple,5 gp,1d6 bludgeoning,,4 lb.,
+quarterstaff,melee,simple,2 sp,1d6 bludgeoning,,4 lb.,"versatile (1d8)"
+sickle,melee,simple,1 gp,1d4 slashing,,2 lb.,light
+spear,melee,simple,1 gp,1d6 piercing,20/60,3 lb.,"thrown, versatile (1d8)"
+"crossbow, light",ranged,simple,25 gp,1d8 piercing,80/320,5 lb.,"ammunition, loading, two-handed"
+dart,ranged,simple,5 cp,1d4 piercing,20/60,1/4 lb.,"finesse,thrown"
+shortbow,ranged,simple,25 gp,1d6 piercing,80/320,2 lb.,"ammunition, two-handed"
+sling,ranged,simple,1 sp,1d4 bludgeoning,30/120,,ammunition (range 30/120)
+battleaxe,melee,martial,10 gp,1d8 slashing,,4 lb.,"versatile (1d10)"
+Dwaren Urgrosh,melee,martial,22 gp,1d8 piercing or 1d10 slashing,20/60,4 lb.,"special, two-handed"
+flail,melee,martial,10 gp,1d8 bludgeoning,,2 lb.,
+glaive,melee,martial,20 gp,1d10 slashing,,6 lb.,"heavy, reach, two-handed"
+greataxe,melee,martial,30 gp,1d12 slashing,,7 lb.,heavy, two-handed
+halberd,melee,martial,20 gp,1d10 slashing,,6 lb.,"heavy, reach, two-handed"
+lance,melee,martial,10 gp,1d12 piercing,,6 lb.,"reach, special"
+longsword,melee,martial,15 gp,1d8 slashing,,3 lb.,"versatile (1d10)"
+maul,melee,martial,10 gp,2d6 bludgeoning,,10 lb.,"heavy, two-handed"
+morningstar,melee,martial,15 gp,1d8 piercing,,4 lb.,
+pike,melee,martial,5 gp,1d10 piercing,,18 lb.,"heavy, reach, two-handed"
+rapier,melee,martial,25 gp,1d8 piercing,,2 lb.,"finesse"
+scimitar,melee,martial,25 gp,1d6 slashing,,3 lb.,"finesse, light"
+shortsword,melee,martial,10 gp,1d6 piercing,,2 lb.,"finesse, light"
+trident,melee,martial,5 gp,1d6 piercing,,4 lb.,"thrown, versatile (1d8)"
+war pick,melee,martial,5 gp,1d8 piercing,,2 lb.,
+warhammer,melee,martial,15 gp,1d8 bludgeoning,,2 lb.,"versatile (1d10)"
+whip,melee,martial,2 gp,1d4 slashing,,3 lb.,"finesse, reach"
+war Scythe,melee,martial,25 gp,1d10 slashing,,4 lb.,"special, two-handed"
+blowgun,ranged,martial,10 gp,1 piercing,25/100,1 lb.,"ammunition, loading"
+"crossbow, hand",ranged,martial,75 gp,1d6 piercing,30/120,3 lb.,"ammunition, light, loading"
+"crossbow, heavy",ranged,martial,50 gp,1d10 piercing,100/400,18 lb.,"ammunition, heavy, loading, two-handed"
+longbow,ranged,martial,50 gp,1d8 piercing,150/600,2 lb.,"ammunition, heavy, two-handed"
+net,ranged,martial,1 gp,,5/15,3 lb.,"special, thrown"
