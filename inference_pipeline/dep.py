@@ -1,5 +1,7 @@
 import random
 from pymongo import MongoClient, errors
+import pandas as pd
+from thefuzz import process
 
 class dependencies():
     def __init__(self):
@@ -59,3 +61,51 @@ class dependencies():
             return 5
         else:
             raise ValueError("Ability score must be between 2 and 21.")
+    
+    def calculate_attack_modifier_damage(self, weapon_type, dexterity_modifier, strength_modifier, proficiency_modifier, property):
+        if "finesse" in property:
+            attack_modifier = max(dexterity_modifier, strength_modifier) + proficiency_modifier
+            damage = max(dexterity_modifier, strength_modifier)
+            return attack_modifier, damage
+        if weapon_type == "ranged":
+            attack_modifier = dexterity_modifier + proficiency_modifier
+            damage = dexterity_modifier
+            return attack_modifier, damage
+        if weapon_type == "melee":
+            attack_modifier = strength_modifier + proficiency_modifier
+            damage = strength_modifier
+            return attack_modifier, damage
+    
+    def get_data(self, client, collection_name):
+        db = client["context_data"]
+        collection = db[collection_name]
+        df = pd.DataFrame(list(collection.find()), dtype=str)
+        return df
+    
+    def lower_case_list(self, lst):
+        return [item.lower() for item in lst]
+
+    def filter_dataframe(self, df, weapon_list, column_name, threshold=80):
+
+        matched_weapons = set()
+        
+        for weapon in weapon_list:
+            best_match, score = process.extractOne(weapon, df[column_name].tolist(), score_cutoff=threshold)
+            if best_match:
+                matched_weapons.add(best_match)
+        
+        return df[df[column_name].isin(matched_weapons)]
+
+    def character_weapons(self, client, weapons):
+        weapons_df = self.get_data(client, "weapons")
+        weapons_df = self.filter_dataframe(weapons_df, weapons, "weapon_name")
+        return weapons_df
+    
+    def character_armor(self, client, armor):
+        armor_df = self.get_data(client, "armor")
+        armor_df = self.filter_dataframe(armor_df, armor, "armor")
+        return armor_df
+    
+
+
+

@@ -84,10 +84,11 @@ class askLLM():
 
         user_query = f'which armor, weapons, kits, instruments, languages does the character belonging \
                         to {class_name} and {background_name} have. Consider both the class and background and give me only one list. \
-                             Along with this, for every armor, weapon, kit and instrument give me a bonus associated with them when used in the game \
-                             do your thinking before answering. \
+                             Along with this, for every armor, weapon name (not the type), kit and instrument give me a bonus associated with them when used in the game \
+                             do your thinking before answering. do not get confused between these categories. items from category should not be another. \
                             I need the output in a json formatted string in this way \
-                                "armor": [list here], "weapons": [list here], "kits": [list here], "instruments": [list here], "languages": [list here]'
+                                "armor": [list here], "weapons": [list here], "kits": [list here], "instruments": [list here], "languages": [list here], \
+                                    "bonus": item_name: bonus_value'
         
         messages = [
             {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
@@ -101,6 +102,8 @@ class askLLM():
             messages=messages,
             temperature=0.7
         )
+
+        # print(response.choices[0].message.content)
         
         return json.loads(response.choices[0].message.content)
     
@@ -117,6 +120,26 @@ class askLLM():
             {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
             {"role": "user", "content": f"class_context: {class_context}"},
             {"role": "user", "content": f"background_context: {background_context}"},
+            {"role": "user", "content": f"Question: {user_query}"}
+        ]
+        
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.7
+        )
+        return json.loads(response.choices[0].message.content)
+    
+    def get_speed(self, race_name, race_context, model="gpt-3.5-turbo"):
+
+        user_query = f'I need the speed for the character belonging to {race_name}. \
+                        Speed means how far the character can move with a single movement. do your thinking before answering. \
+                            and give me only the speed value in JSON formatted string this way \
+                            "speed": speed_value'
+        
+        messages = [
+            {"role": "system", "content": "You are a creative assistant, well versed in mythology and writes amazing stories."},
+            {"role": "user", "content": f"race_context: {race_context}"},
             {"role": "user", "content": f"Question: {user_query}"}
         ]
         

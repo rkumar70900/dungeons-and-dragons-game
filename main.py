@@ -75,7 +75,10 @@ def get_class_context():
     return output_class_context
 
 @app.get("/race_context")
-def get_race_context(race_name: str):
+def get_race_context():
+    if not get_output("get_race"):
+        raise HTTPException(status_code=400, detail="Race not assigned")
+    race_name = get_output("get_race")['data']
     if not get_output("get_race_context"):
         race_context = inf.get_race_context(race_name)
         store_output("get_race_context", race_context)
@@ -218,3 +221,76 @@ def get_equipment_money():
         store_output("get_equipment_money", equipment_money)
     output_equipment_money = get_output("get_equipment_money")
     return output_equipment_money
+
+@app.get("/attacks")
+def get_attacks():
+    if not get_output("get_proficiencies_languages"):
+        raise HTTPException(status_code=400, detail="Proficiencies and Languages not assigned")
+    weapons = get_output("get_proficiencies_languages")['data']['weapons']
+    if not get_output("get_ability_modifier"):
+        raise HTTPException(status_code=400, detail="Ability mofidiers not assigned")
+    ability_modifier = get_output("get_ability_modifier")['data']
+    if not get_output("get_proficiency_modifier"):
+        raise HTTPException(status_code=400, detail="Proficiency modifier not assigned")
+    proficiency_modifier = get_output("get_proficiency_modifier")['data']['proficiency_modifier']
+    if not get_output("get_attacks"):
+        attacks = inf.get_attacks_damage(weapons, ability_modifier["dexterity"], ability_modifier["strength"], proficiency_modifier)
+        store_output("get_attacks", attacks)
+    output_attacks = get_output("get_attacks")
+    return output_attacks
+
+@app.get("/armor")
+def get_armor_class():
+    if not get_output("get_proficiencies_languages"):
+        raise HTTPException(status_code=400, detail="Proficiencies and Languages not assigned")
+    armor = get_output("get_proficiencies_languages")['data']['armor']
+    if not get_output("get_ability_modifier"):
+        raise HTTPException(status_code=400, detail="Ability mofidiers not assigned")
+    dexterity_modifier = get_output("get_ability_modifier")['data']['dexterity']
+    if not get_output("get_armor"):
+        armor = inf.get_armor_class(armor, dexterity_modifier)
+        store_output("get_armor_class", armor)
+    output_armor_class = get_output("get_armor_class") 
+    return output_armor_class
+
+@app.get("/initative")
+def get_initiative():
+    if not get_output("get_ability_modifier"):
+        raise HTTPException(status_code=400, detail="Ability mofidiers not assigned")
+    dexterity_modifier = get_output("get_ability_modifier")['data']['dexterity']
+    if not get_output("get_initiative"):
+        speed = {"initiative": dexterity_modifier} 
+        store_output("get_initiative", speed)
+    output_initiative = get_output("get_initiative")
+    return output_initiative
+
+@app.get("/speed")
+def get_speed():
+    if not get_output("get_race") and get_output("get_race_context"):
+        raise HTTPException(status_code=400, detail="Race and RAce Context not assigned")
+    race = get_output("get_race")
+    race_context = get_output("get_race_context")
+    if not get_output("get_speed"):
+        speed = inf.get_speed(race, race_context)
+        store_output("get_speed", speed)
+    output_speed = get_output("get_speed")
+    return output_speed
+
+@app.get("/all")
+def get_all():
+    get_race()
+    get_race_context()
+    # get_class()
+    # get_background()
+    # get_class_context()
+    # get_background_context()
+    # get_abilities()
+    # get_ability_scores()
+    # get_ability_modifier()
+    # prof = get_proficiency_modifier()
+    # get_proficiencies_languages()
+    # get_attacks()
+    # get_armor_class()
+    # get_initiative()
+    output = get_speed()
+    return output

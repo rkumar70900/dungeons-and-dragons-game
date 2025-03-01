@@ -117,5 +117,40 @@ class dndCharacter():
     def get_equipment_money(self, class_name, background_name, class_context, background_context):
         equipment_money = self.ask.get_equipment_money(class_name, background_name, class_context, background_context)
         return equipment_money
+    
+    def get_attacks_damage(self, weapons, dexterity_modifier, strength_modifier, proficiency_modifier):
+        attacks = []
+        weapons_df = self.dep.character_weapons(self.client, weapons)
+        for i in range(len(weapons_df)):
+            weapon = weapons_df.iloc[i]["weapon_name"]
+            damage = weapons_df.iloc[i]["damage"].split(" ")
+            weapon_type = weapons_df.iloc[i]["weapons_type"]
+            property = weapons_df.iloc[i]["properties"]
+            attack_modifier, damage_score = self.dep.calculate_attack_modifier_damage(weapon_type, dexterity_modifier, strength_modifier, proficiency_modifier, property)
+            damage = damage[0] + " " + str(damage_score) + " " + damage[1]
+            attacks.append({"weapon": weapon, "attack_modifier": attack_modifier, "damage": damage})
+        return attacks
+    
+    def get_armor_class(self, armor, dexterity_modifier):
+        if not armor:
+            return 10 + dexterity_modifier
+        armor_df = self.dep.character_armor(self.client, armor)
+        print(armor_df)
+        armor_type = armor_df.iloc[0]["armor_type"]
+        armor_class = int(armor_df.iloc[0]["armor_class"][:2])
+        if armor_type == 'light':
+            return armor_class + dexterity_modifier
+        elif armor_type == 'medium':
+            return armor_class + min(dexterity_modifier, 2)
+        elif armor_type == 'heavy':
+            return armor_class
 
+    def get_speed(self, race_name, race_context):
+        speed = self.ask.get_speed(race_name, race_context)
+        return speed
+
+
+
+
+    
 

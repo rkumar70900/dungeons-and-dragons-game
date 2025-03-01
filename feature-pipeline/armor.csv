@@ -1,0 +1,14 @@
+armor,armor_type,armor_class,strength,stealth,weight,cost
+padded,light,11,,disadvantage,8 lb,5 gp
+leather,light,11,,disadvantage,10 lb,10 gp
+studded leather,light,12,,disadvantage,13 lb,45 gp
+hide,medium,12,,disadvantage,12 lb,10 gp
+chain shirt,medium,13,,disadvantage,20 lb,50 gp
+scale mail,medium,14,,disadvantage,45 lb,50 gp
+breastplate,medium,14,,disadvantage,20 lb,400 gp
+half plate,medium,15,,disadvantage,40 lb,750 gp
+ring mail,heavy,14,,disadvantage,40 lb,30 gp
+chain mail,heavy,16,13,disadvantage,55 lb,75 gp
+splint mail,heavy,17,15,disadvantage,60 lb,200 gp
+plate mail,heavy,18,15,disadvantage,65 lb,1500 gp
+shield,armor,2,,,6 lb,10 gp
