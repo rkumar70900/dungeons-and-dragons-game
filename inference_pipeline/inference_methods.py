@@ -148,6 +148,10 @@ class dndCharacter():
     def get_speed(self, race_name, race_context):
         speed = self.ask.get_speed(race_name, race_context)
         return speed
+    
+    def get_hit_dice(self, class_name, class_context):
+        hit_dice = self.ask.get_hit_dice(class_name, class_context)
+        return hit_dice
 
 
 

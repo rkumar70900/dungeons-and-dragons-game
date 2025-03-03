@@ -105,7 +105,6 @@ class dependencies():
         armor_df = self.get_data(client, "armor")
         armor_df = self.filter_dataframe(armor_df, armor, "armor")
         return armor_df
-    
 
 
 

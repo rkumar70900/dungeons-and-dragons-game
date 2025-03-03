@@ -276,13 +276,25 @@ def get_speed():
     output_speed = get_output("get_speed")
     return output_speed
 
+@app.get("/hit_dice")
+def get_hit_dice():
+    if not get_output("get_class") and get_output("get_class_context"):
+        raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
+    class_name = get_output("get_class")['data']
+    class_context = get_output("get_class_context")['data']
+    if not get_output("get_hit_dice"):
+        hit_dice = inf.get_hit_dice(class_name, class_context)
+        store_output("get_hit_dice", hit_dice)
+    output_hit_dice = get_output("get_hit_dice")
+    return output_hit_dice
+
 @app.get("/all")
 def get_all():
-    get_race()
-    get_race_context()
-    # get_class()
+    # get_race()
+    # get_race_context()
+    get_class()
     # get_background()
-    # get_class_context()
+    get_class_context()
     # get_background_context()
     # get_abilities()
     # get_ability_scores()
@@ -292,5 +304,6 @@ def get_all():
     # get_attacks()
     # get_armor_class()
     # get_initiative()
-    output = get_speed()
+    # get_speed()
+    output = get_hit_dice()
     return output
