@@ -1,4 +1,24 @@
 from pymongo import MongoClient, errors
+"""
+This script connects to a MongoDB database, reads text files from a specified directory,
+and inserts the contents of these files into a MongoDB collection.
+Modules:
+    pymongo: Provides tools for working with MongoDB.
+    os: Provides functions for interacting with the operating system.
+Functions:
+    None
+Attributes:
+    client (MongoClient): The MongoDB client instance.
+    db (Database): The MongoDB database instance.
+    collection (Collection): The MongoDB collection instance.
+    base_name (str): The base directory path where the text files are located.
+    files (list): List of files in the base directory.
+Exceptions:
+    errors.ServerSelectionTimeoutError: Raised if the connection to MongoDB times out.
+Usage:
+    Run the script to connect to MongoDB, read text files from the specified directory,
+    and insert the file contents into the MongoDB collection.
+"""
 import os
 
 try:
@@ -15,7 +35,7 @@ db = client["context_data"]
 
 collection = db["backgrounds"]
 
-base_name = 'C://Users//rajes//Documents//GitHub//dungeons-and-dragons-game//web_scraping//backgrounds'
+base_name = 'C://Users//rajes//Documents//GitHub//dungeons-and-dragons-game//feature-pipeline//armor.csv'
 files = os.listdir(base_name)
 
 for file in files:
@@ -29,3 +49,5 @@ for file in files:
     collection.insert_one(doc)
 
     print("record " + file_name + " inserted into " + base_name.split('//')[-1])
+
+

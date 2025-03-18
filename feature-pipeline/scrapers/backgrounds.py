@@ -1,4 +1,19 @@
 import re, time, os
+"""
+This script uses Playwright to scrape background data from the 5e SRD website and save it to text files.
+Modules:
+    re: Provides regular expression matching operations.
+    time: Provides various time-related functions.
+    os: Provides a way of using operating system dependent functionality.
+    playwright.sync_api: Provides synchronous API for Playwright.
+Functions:
+    run(playwright: Playwright) -> None:
+        Launches a browser instance, navigates to the 5e SRD website, and scrapes background data.
+        Saves the scraped data to text files if they do not already exist.
+Variables:
+    stories (dict): A dictionary to store the scraped data.
+    files (list): A list of filenames in the specified directory.
+"""
 from playwright.sync_api import Playwright, sync_playwright, expect
 
 stories = {}
