@@ -1,3 +1,19 @@
+
+"""
+This script uses Playwright to scrape race characteristics from the 5e SRD website and save them to text files.
+Modules:
+    re: Provides regular expression matching operations.
+    time: Provides time-related functions.
+    os: Provides a way of using operating system dependent functionality.
+    playwright.sync_api: Provides synchronous Playwright API.
+Functions:
+    run(playwright: Playwright) -> None:
+        Launches a browser, navigates to the 5e SRD website, and scrapes race characteristics.
+        Saves the scraped data to text files if they do not already exist.
+Variables:
+    stories (dict): An empty dictionary to store stories (currently unused).
+    files (list): A list of filenames in the specified directory.
+"""
 import re, time, os
 from playwright.sync_api import Playwright, sync_playwright, expect
 

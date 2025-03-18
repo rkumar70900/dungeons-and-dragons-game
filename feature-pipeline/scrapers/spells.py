@@ -1,3 +1,19 @@
+"""
+This script uses Playwright to scrape spell data from the 5esrd.com website and save it to text files.
+Modules:
+    re: Provides regular expression matching operations.
+    time: Provides various time-related functions.
+    os: Provides a way of using operating system dependent functionality.
+    playwright.sync_api: Provides synchronous Playwright API.
+Functions:
+    run(playwright: Playwright) -> None:
+        Launches a Chromium browser, navigates to the 5esrd.com website, and scrapes spell data.
+        Saves the scraped data to text files if they do not already exist.
+Variables:
+    stories (dict): A dictionary to store the scraped data.
+    files (list): A list of filenames in the specified directory.
+"""
+
 import re, time, os
 from playwright.sync_api import Playwright, sync_playwright, expect
 

@@ -1,4 +1,19 @@
 import re, time, os
+"""
+This script uses Playwright to scrape class information from the 5esrd.com website and save it to text files.
+Modules:
+    re
+    time
+    os
+    playwright.sync_api
+Functions:
+    run(playwright: Playwright) -> None
+        Launches a browser, navigates to the 5esrd.com website, and scrapes class information.
+        Saves the scraped data to text files if they do not already exist.
+Variables:
+    stories (dict): A dictionary to store the scraped data.
+    files (list): A list of files in the specified directory.
+"""
 from playwright.sync_api import Playwright, sync_playwright, expect
 
 stories = {}
