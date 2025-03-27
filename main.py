@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response, Cookie, HTTPException
+from fastapi import FastAPI, Request, Response, Cookie, HTTPException, Depends
 """
 This module defines a FastAPI application for a Dungeons and Dragons game character generator.
 It includes various endpoints to generate and retrieve character attributes and context.
@@ -49,20 +49,23 @@ from inference_pipeline import inference_methods
 import redis
 import json
 import uuid
-import inspect
 from logger import log_success, log_failure
 from inference_pipeline import dep
-
-inf = inference_methods.dndCharacter()
+from databases.database_conn import connections
+from datetime import datetime
 
 app = FastAPI()
 
-redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+conn = connections()
+
+redis_client = conn.connect_redis()
+mongo_client = conn.connect_mongo()
+
+inf = inference_methods.dndCharacter(mongo_client)
 
 SESSION_TIMEOUT = 3600  # 1 hour in seconds
 
-client = dep.dependencies().connect_mongo()
-db = client["context_data"]
+db = mongo_client["context_data"]
 collection = db["audit_logs"]
 
 @app.middleware("http")
@@ -87,8 +90,12 @@ async def delete_redis_on_swagger_refresh(request: Request, call_next):
     response = await call_next(request)
     return response
 
+def get_session_id(request: Request) -> str:
+    """Extracts the session ID from headers or generates a new one."""
+    return request.headers.get("X-Session-ID", str(uuid.uuid4()))
+
 @app.post('/store-output/{endpoint_name}')
-def store_output(endpoint_name: str, data: dict, session_id: str = Cookie(None)):
+def store_output(endpoint_name: str, data: dict, session_id: str):
     """
     Stores the output data for a given endpoint in a Redis database.
 
@@ -107,10 +114,16 @@ def store_output(endpoint_name: str, data: dict, session_id: str = Cookie(None))
         raise HTTPException(status_code=400, detail="Session ID missing")
     redis_key = f"{session_id}:{endpoint_name}"
     redis_client.setex(redis_key, SESSION_TIMEOUT, json.dumps(data))
+    collection.insert_one({
+        "session_id": session_id,
+        "endpoint_name": endpoint_name,
+        "data": data,
+        "timestamp": datetime.utcnow().isoformat()
+    })
     return {"message": f"Data stored for endpoint '{endpoint_name}'"}
 
 @app.get("/get-output/{endpoint_name}/")
-def get_output(endpoint_name: str, session_id: str = Cookie(None)):
+def get_output(endpoint_name: str, session_id: str):
     """
     Retrieve the output data for a given endpoint and session ID from Redis.
 
@@ -131,8 +144,9 @@ def get_output(endpoint_name: str, session_id: str = Cookie(None)):
     if data:
         return {"endpoint": endpoint_name, "data": json.loads(data)}
 
+
 @app.get("/race")
-def get_race():
+async def get_race(session_id: str = Depends(get_session_id)):
     """
     Retrieves the race name for a character. If the race name is not already stored, 
     it fetches the race name using the inf.get_race() function and stores it for future use.
@@ -140,15 +154,11 @@ def get_race():
     Returns:
         str: The race name of the character.
     """
-    race_name = get_output("get_race")
-    if not race_name:
-        race_name = inf.get_race()
-        store_output("get_race", race_name)
-    output_race = get_output("get_race")
-    return output_race
+    race_name = inf.get_race()
+    store_output("get_race", race_name, session_id)
 
 @app.get("/class")
-def get_class():
+async def get_class(session_id: str = Depends(get_session_id)):
     """
     Retrieves the class name for a character in the game. If the class name has 
     not been previously stored, it fetches the class name using the inf.get_class() 
@@ -158,14 +168,11 @@ def get_class():
     Returns:
         str: The class name of the character.
     """
-    if not get_output("get_class"):
-        class_name = inf.get_class()
-        store_output("get_class", class_name)
-    output_class = get_output("get_class")
-    return output_class
+    class_name = inf.get_class()
+    store_output("get_class", class_name, session_id)
 
 @app.get("/background")
-def get_background():
+async def get_background(session_id: str = Depends(get_session_id)):
     """
     Retrieves the background name for the game. If the background name is not already stored,
     it fetches the background name using the `inf.get_background()` function and stores it.
@@ -174,14 +181,11 @@ def get_background():
     Returns:
         str: The background name.
     """
-    if not get_output("get_background"):
-        background_name = inf.get_background()
-        store_output("get_background", background_name)
-    output_background = get_output("get_background")
-    return output_background
+    background_name = inf.get_background()
+    store_output("get_background", background_name, session_id)
 
 @app.get("/class_context")
-def get_class_context():
+async def get_class_context(session_id: str = Depends(get_session_id)):
     """
     Retrieves the context for a class in the game.
 
@@ -194,17 +198,14 @@ def get_class_context():
     Raises:
         HTTPException: If the class is not assigned.
     """
-    if not get_output("get_class"):
+    if not get_output("get_class", session_id):
         raise HTTPException(status_code=400, detail="Class not assigned")
-    class_name = get_output("get_class")['data']
-    if not get_output("get_class_context"):
-        class_context = inf.get_class_context(class_name)
-        store_output("get_class_context", class_context)
-    output_class_context = get_output("get_class_context")
-    return output_class_context
+    class_name = get_output("get_class", session_id)['data']
+    class_context = inf.get_class_context(class_name)
+    store_output("get_class_context", class_context, session_id)
 
 @app.get("/race_context")
-def get_race_context():
+async def get_race_context(session_id: str = Depends(get_session_id)):
     """
     Retrieves the context for a race in the game.
 
@@ -224,17 +225,14 @@ def get_race_context():
     Raises:
         HTTPException: If the race is not assigned.
     """
-    if not get_output("get_race"):
+    if not get_output("get_race", session_id):
         raise HTTPException(status_code=400, detail="Race not assigned")
-    race_name = get_output("get_race")['data']
-    if not get_output("get_race_context"):
-        race_context = inf.get_race_context(race_name)
-        store_output("get_race_context", race_context)
-    output_race_context = get_output("get_race_context")
-    return output_race_context
+    race_name = get_output("get_race", session_id)['data']
+    race_context = inf.get_race_context(race_name)
+    store_output("get_race_context", race_context, session_id)
 
 @app.get("/background_context")
-def get_background_context():
+async def get_background_context(session_id: str = Depends(get_session_id)):
     """
     Retrieves the background context for a given background.
 
@@ -249,17 +247,14 @@ def get_background_context():
     Returns:
         dict: The background context.
     """
-    if not get_output("get_background"):
+    if not get_output("get_background", session_id):
         raise HTTPException(status_code=400, detail="Background not assigned")
-    background_name = get_output("get_background")['data']
-    if not get_output("get_background_context"):
-        background_context = inf.get_background_context(background_name)
-        store_output("get_background_context", background_context)
-    output_background_context = get_output("get_background_context")
-    return output_background_context
+    background_name = get_output("get_background", session_id)['data']
+    background_context = inf.get_background_context(background_name)
+    store_output("get_background_context", background_context, session_id)
 
 @app.get("/abilities")
-def get_abilities():
+async def get_abilities(session_id: str = Depends(get_session_id)):
     """
     Retrieves the abilities for a given class and class context.
 
@@ -274,19 +269,16 @@ def get_abilities():
     Returns:
         dict: The abilities for the specified class and class context.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    if not get_output("get_abilities"):
-        class_abilities = inf.get_abilities(class_name, class_context)
-        store_output("get_abilities", class_abilities)
-    output_abilities = get_output("get_abilities")
-    return output_abilities
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    class_abilities = inf.get_abilities(class_name, class_context)
+    store_output("get_abilities", class_abilities, session_id)
 
 
 @app.get("/ability_scores")
-def get_ability_scores():
+async def get_ability_scores(session_id: str = Depends(get_session_id)):
     """
     Retrieve or generate ability scores for a character.
 
@@ -308,17 +300,14 @@ def get_ability_scores():
     Raises:
         HTTPException: If the abilities are not assigned.
     """
-    if not get_output("get_abilities"):
+    if not get_output("get_abilities", session_id):
         raise HTTPException(status_code=400, detail="Abilities not assigned")
-    output_abilities = get_output("get_abilities")
-    if not get_output("get_ability_scores"):
-        ability_scores = inf.assign_scores(output_abilities['data'])
-        store_output("get_ability_scores", ability_scores)
-    output_abilities = get_output("get_ability_scores")
-    return output_abilities
+    output_abilities = get_output("get_abilities", session_id)
+    ability_scores = inf.assign_scores(output_abilities['data'])
+    store_output("get_ability_scores", ability_scores, session_id)
 
 @app.get("/assign_ability_modifier")
-def get_ability_modifier():
+async def get_ability_modifier(session_id: str = Depends(get_session_id)):
     """
     Retrieves the ability modifier for a character based on their ability scores.
 
@@ -332,17 +321,14 @@ def get_ability_modifier():
     Raises:
         HTTPException: If the ability scores have not been assigned.
     """
-    if not get_output("get_ability_scores"):
+    if not get_output("get_ability_scores", session_id):
         raise HTTPException(status_code=400, detail="Ability scores not assigned")
-    output_ability_scores = get_output("get_ability_scores")['data']
-    if not get_output("get_ability_modifier"):
-        ability_modifier = inf.ability_modifier(output_ability_scores)
-        store_output("get_ability_modifier", ability_modifier)
-    output_ability_modifier = get_output("get_ability_modifier")
-    return output_ability_modifier
+    output_ability_scores = get_output("get_ability_scores", session_id)['data']
+    ability_modifier = inf.ability_modifier(output_ability_scores)
+    store_output("get_ability_modifier", ability_modifier, session_id)
 
 @app.get("/proficieny_modifier")
-def get_proficiency_modifier():
+async def get_proficiency_modifier(session_id: str = Depends(get_session_id)):
     """
     Retrieves the proficiency modifier for a character.
 
@@ -354,14 +340,11 @@ def get_proficiency_modifier():
     Returns:
         int: The proficiency modifier for the character.
     """
-    if not get_output("get_proficiency_modifier"):
-        proficiency_modifier = inf.proficiency_modifier()
-        store_output("get_proficiency_modifier", proficiency_modifier)
-    output_proficiency_modifier = get_output("get_proficiency_modifier")
-    return output_proficiency_modifier
+    proficiency_modifier = inf.proficiency_modifier()
+    store_output("get_proficiency_modifier", proficiency_modifier, session_id)
 
 @app.get("/saving_throws")
-def get_saving_throws():
+async def get_saving_throws(session_id: str = Depends(get_session_id)):
     """
     Calculate and retrieve the saving throws for a character based on their class, class context, 
     ability scores, and proficiency modifier.
@@ -372,24 +355,21 @@ def get_saving_throws():
     Returns:
         dict: The saving throws for the character.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    if not get_output("get_ability_scores"):
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    if not get_output("get_ability_scores", session_id):
         raise HTTPException(status_code=400, detail="Ability scores not assigned")
-    ability_scores = get_output("get_ability_scores")['data']
-    if not get_output("get_proficiency_modifier"):
+    ability_scores = get_output("get_ability_scores", session_id)['data']
+    if not get_output("get_proficiency_modifier", session_id):
         raise HTTPException(status_code=400, detail="Proficiency modifier not assigned")
-    proficiency_modifier = get_output("get_proficiency_modifier")['data']['proficiency_modifier']
-    if not get_output("get_saving_throws"):
-        saving_throws = inf.saving_throws(class_name, class_context, ability_scores, proficiency_modifier)
-        store_output("get_saving_throws", saving_throws)
-    output_saving_throws = get_output("get_saving_throws")
-    return output_saving_throws
+    proficiency_modifier = get_output("get_proficiency_modifier", session_id)['data']['proficiency_modifier']
+    saving_throws = inf.saving_throws(class_name, class_context, ability_scores, proficiency_modifier)
+    store_output("get_saving_throws", saving_throws, session_id)
 
 @app.get("/skills")
-def get_skills():
+async def get_skills(session_id: str = Depends(get_session_id)):
     """
     Retrieves and stores the skills for a character based on class, background, 
     ability scores, and proficiency modifier. If the skills are already stored, 
@@ -402,28 +382,25 @@ def get_skills():
     Returns:
         dict: The skills of the character.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
     class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    if not get_output("get_background") and get_output("get_background_context"):   
+    class_context = get_output("get_class_context", session_id)['data']
+    if not get_output("get_background", session_id) and get_output("get_background_context", session_id):   
         raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
-    background_name = get_output("get_background")['data']
-    background_context = get_output("get_background_context")['data']
-    if not get_output("get_ability_scores"):
+    background_name = get_output("get_background", session_id)['data']
+    background_context = get_output("get_background_context", session_id)['data']
+    if not get_output("get_ability_scores", session_id):
         raise HTTPException(status_code=400, detail="Ability scores not assigned")
-    ability_scores = get_output("get_ability_scores")['data']
-    if not get_output("get_proficiency_modifier"):
+    ability_scores = get_output("get_ability_scores", session_id)['data']
+    if not get_output("get_proficiency_modifier", session_id):
         raise HTTPException(status_code=400, detail="Proficiency modifier not assigned")
     proficiency_modifier = get_output("get_proficiency_modifier")['data']['proficiency_modifier']
-    if not get_output("get_skills"):
-        skills = inf.get_skills(class_name, background_name, class_context, background_context, ability_scores, proficiency_modifier)
-        store_output("get_skills", skills)
-    output_skills = get_output("get_skills")
-    return output_skills
+    skills = inf.get_skills(class_name, background_name, class_context, background_context, ability_scores, proficiency_modifier)
+    store_output("get_skills", skills, session_id)
 
 @app.get("/passive_perception")
-def get_passive_perception():
+async def get_passive_perception(session_id: str = Depends(get_session_id)):
     """
     Calculate and retrieve the passive perception value for a character.
 
@@ -439,17 +416,14 @@ def get_passive_perception():
     Raises:
         HTTPException: If the character's skills have not been assigned.
     """
-    if not get_output("get_skills"):
+    if not get_output("get_skills", session_id):
         raise HTTPException(status_code=400, detail="Skills not assigned")
-    perception = get_output("get_skills")['data']['Perception']
-    if not get_output("get_passive_perception"):
-        passive_perception = inf.get_passive_perception(perception)
-        store_output("get_passive_perception", passive_perception)
-    output_passive_perception = get_output("get_passive_perception")
-    return output_passive_perception
+    perception = get_output("get_skills", session_id)['data']['Perception']
+    passive_perception = inf.get_passive_perception(perception)
+    store_output("get_passive_perception", passive_perception, session_id)
 
 @app.get("/proficiencies_languages")
-def get_proficiencies_languages():
+async def get_proficiencies_languages(session_id: str = Depends(get_session_id)):
     """
     Retrieves the proficiencies and languages based on the character's class and background.
 
@@ -460,22 +434,19 @@ def get_proficiencies_languages():
     Returns:
         dict: A dictionary containing the proficiencies and languages.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    if not get_output("get_background") and get_output("get_background_context"):   
+    if not get_output("get_background", session_id) and get_output("get_background_context", session_id):   
         raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    background_name = get_output("get_background")['data']
-    background_context = get_output("get_background_context")['data']
-    if not get_output("get_proficiencies_languages"):
-        proficiencies_languages = inf.get_proficiencies_languages(class_name, background_name, class_context, background_context)
-        store_output("get_proficiencies_languages", proficiencies_languages)
-    output_proficiencies_languages = get_output("get_proficiencies_languages")
-    return output_proficiencies_languages
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    background_name = get_output("get_background", session_id)['data']
+    background_context = get_output("get_background_context", session_id)['data']
+    proficiencies_languages = inf.get_proficiencies_languages(class_name, background_name, class_context, background_context)
+    store_output("get_proficiencies_languages", proficiencies_languages, session_id)
 
 @app.get("/equipment_money")
-def get_equipment_money():
+async def get_equipment_money(session_id: str = Depends(get_session_id)):
     """
     Retrieves the equipment money based on the character's class and background.
 
@@ -492,22 +463,19 @@ def get_equipment_money():
     Returns:
         dict: The equipment money information.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    if not get_output("get_background") and get_output("get_background_context"):   
+    if not get_output("get_background", session_id) and get_output("get_background_context", session_id):   
         raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    background_name = get_output("get_background")['data']
-    background_context = get_output("get_background_context")['data']
-    if not get_output("get_equipment_money"):
-        equipment_money = inf.get_equipment_money(class_name, background_name, class_context, background_context)
-        store_output("get_equipment_money", equipment_money)
-    output_equipment_money = get_output("get_equipment_money")
-    return output_equipment_money
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    background_name = get_output("get_background", session_id)['data']
+    background_context = get_output("get_background_context", session_id)['data']
+    equipment_money = inf.get_equipment_money(class_name, background_name, class_context, background_context)
+    store_output("get_equipment_money", equipment_money, session_id)
 
 @app.get("/attacks")
-def get_attacks():
+async def get_attacks(session_id: str = Depends(get_session_id)):
     """
     Retrieves the attack details for a character based on their proficiencies, ability modifiers, and proficiency modifier.
 
@@ -517,23 +485,20 @@ def get_attacks():
     Returns:
         dict: A dictionary containing the attack details.
     """
-    if not get_output("get_proficiencies_languages"):
+    if not get_output("get_proficiencies_languages", session_id):
         raise HTTPException(status_code=400, detail="Proficiencies and Languages not assigned")
-    weapons = get_output("get_proficiencies_languages")['data']['weapons']
-    if not get_output("get_ability_modifier"):
+    weapons = get_output("get_proficiencies_languages", session_id)['data']['weapons']
+    if not get_output("get_ability_modifier", session_id):
         raise HTTPException(status_code=400, detail="Ability mofidiers not assigned")
-    ability_modifier = get_output("get_ability_modifier")['data']
-    if not get_output("get_proficiency_modifier"):
+    ability_modifier = get_output("get_ability_modifier", session_id)['data']
+    if not get_output("get_proficiency_modifier", session_id):
         raise HTTPException(status_code=400, detail="Proficiency modifier not assigned")
-    proficiency_modifier = get_output("get_proficiency_modifier")['data']['proficiency_modifier']
-    if not get_output("get_attacks"):
-        attacks = inf.get_attacks_damage(weapons, ability_modifier["dexterity"], ability_modifier["strength"], proficiency_modifier)
-        store_output("get_attacks", attacks)
-    output_attacks = get_output("get_attacks")
-    return output_attacks
+    proficiency_modifier = get_output("get_proficiency_modifier", session_id)['data']['proficiency_modifier']
+    attacks = inf.get_attacks_damage(weapons, ability_modifier["dexterity"], ability_modifier["strength"], proficiency_modifier)
+    store_output("get_attacks", attacks, session_id)
 
 @app.get("/armor")
-def get_armor_class():
+async def get_armor_class(session_id: str = Depends(get_session_id)):
     """
     Calculate and retrieve the armor class for a character.
 
@@ -552,20 +517,17 @@ def get_armor_class():
     Returns:
         dict: The calculated armor class.
     """
-    if not get_output("get_proficiencies_languages"):
+    if not get_output("get_proficiencies_languages", session_id):
         raise HTTPException(status_code=400, detail="Proficiencies and Languages not assigned")
-    armor = get_output("get_proficiencies_languages")['data']['armor']
-    if not get_output("get_ability_modifier"):
+    armor = get_output("get_proficiencies_languages", session_id)['data']['armor']
+    if not get_output("get_ability_modifier", session_id):
         raise HTTPException(status_code=400, detail="Ability mofidiers not assigned")
-    dexterity_modifier = get_output("get_ability_modifier")['data']['dexterity']
-    if not get_output("get_armor"):
-        armor = inf.get_armor_class(armor, dexterity_modifier)
-        store_output("get_armor_class", armor)
-    output_armor_class = get_output("get_armor_class") 
-    return output_armor_class
+    dexterity_modifier = get_output("get_ability_modifier", session_id)['data']['dexterity']
+    armor = inf.get_armor_class(armor, dexterity_modifier)
+    store_output("get_armor_class", armor, session_id)
 
 @app.get("/initative")
-def get_initiative():
+async def get_initiative(session_id: str = Depends(get_session_id)):
     """
     Calculate and retrieve the initiative value for a character based on their dexterity modifier.
 
@@ -580,17 +542,14 @@ def get_initiative():
     Raises:
         HTTPException: If the ability modifiers are not assigned.
     """
-    if not get_output("get_ability_modifier"):
+    if not get_output("get_ability_modifier", session_id):
         raise HTTPException(status_code=400, detail="Ability mofidiers not assigned")
-    dexterity_modifier = get_output("get_ability_modifier")['data']['dexterity']
-    if not get_output("get_initiative"):
-        speed = {"initiative": dexterity_modifier} 
-        store_output("get_initiative", speed)
-    output_initiative = get_output("get_initiative")
-    return output_initiative
+    dexterity_modifier = get_output("get_ability_modifier", session_id)['data']['dexterity']
+    speed = {"initiative": dexterity_modifier} 
+    store_output("get_initiative", speed, session_id)
 
 @app.get("/speed")
-def get_speed():
+async def get_speed(session_id: str = Depends(get_session_id)):
     """
     Retrieves the speed for a character based on their race and race context.
 
@@ -604,18 +563,15 @@ def get_speed():
     Returns:
         int: The speed of the character.
     """
-    if not get_output("get_race") and get_output("get_race_context"):
+    if not get_output("get_race", session_id) and get_output("get_race_context", session_id):
         raise HTTPException(status_code=400, detail="Race and RAce Context not assigned")
-    race = get_output("get_race")
-    race_context = get_output("get_race_context")
-    if not get_output("get_speed"):
-        speed = inf.get_speed(race, race_context)
-        store_output("get_speed", speed)
-    output_speed = get_output("get_speed")
-    return output_speed
+    race = get_output("get_race", session_id)
+    race_context = get_output("get_race_context", session_id)
+    speed = inf.get_speed(race, race_context)
+    store_output("get_speed", speed, session_id)
 
 @app.get("/hit_dice")
-def get_hit_dice():
+async def get_hit_dice(session_id: str = Depends(get_session_id)):
     """
     Retrieves the hit dice for a character based on their class and class context.
 
@@ -629,18 +585,15 @@ def get_hit_dice():
     Returns:
         dict: The hit dice information.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    if not get_output("get_hit_dice"):
-        hit_dice = inf.get_hit_dice(class_name, class_context)
-        store_output("get_hit_dice", hit_dice)
-    output_hit_dice = get_output("get_hit_dice")
-    return output_hit_dice
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    hit_dice = inf.get_hit_dice(class_name, class_context)
+    store_output("get_hit_dice", hit_dice, session_id)
 
 @app.get("/point_maximum")
-def get_hit_point_maximum():
+async def get_hit_point_maximum(session_id: str = Depends(get_session_id)):
     """
     Calculate and retrieve the maximum hit points for a character.
 
@@ -655,20 +608,17 @@ def get_hit_point_maximum():
     Returns:
         dict: The maximum hit points for the character.
     """
-    if not get_output("get_hit_dice"):
+    if not get_output("get_hit_dice", session_id):
         raise HTTPException(status_code=400, detail="Hit dice not assigned")
-    if not get_output("get_ability_modifier"):
+    if not get_output("get_ability_modifier", session_id):
         raise HTTPException(status_code=400, detail="Ability mofidiers not assigned")
-    constitution_modifier = get_output("get_ability_modifier")['data']['constitution']
-    hit_dice = get_output("get_hit_dice")['data']['hit_dice']
-    if not get_output("get_hit_point_maximum"):
-        point_maximum = inf.get_point_maximun(hit_dice, constitution_modifier)
-        store_output("get_hit_point_maximum", point_maximum)
-    output_hit_point_maximum = get_output("get_hit_point_maximum")
-    return output_hit_point_maximum
+    constitution_modifier = get_output("get_ability_modifier", session_id)['data']['constitution']
+    hit_dice = get_output("get_hit_dice", session_id)['data']['hit_dice']
+    point_maximum = inf.get_point_maximun(hit_dice, constitution_modifier)
+    store_output("get_hit_point_maximum", point_maximum, session_id)
 
 @app.get("/current_hit_point")
-def get_current_hit_point():
+async def get_current_hit_point(session_id: str = Depends(get_session_id)):
     """
     Retrieves the current hit point value for a character.
 
@@ -682,18 +632,15 @@ def get_current_hit_point():
         dict: A dictionary containing the current hit point value.
 
     Raises:
-        HTTPException: If the maximum hit point value is not assigned.
+        HTTPException: If the maimum hit point value is not assigned.
     """
-    if not get_output("get_hit_point_maximum"):
+    if not get_output("get_hit_point_maximum", session_id):
         raise HTTPException(status_code=400, detail="Hit point maximum not assigned")
-    current_hit_point = {"current_hit_point": get_output("get_hit_point_maximum")['data']}
-    if not get_output("get_current_hit_point"):
-        store_output("get_current_hit_point", current_hit_point)
-    output_current_hit_point = get_output("get_current_hit_point")
-    return output_current_hit_point
+    current_hit_point = {"current_hit_point": get_output("get_hit_point_maximum", session_id)['data']}
+    store_output("get_current_hit_point", current_hit_point, session_id)
 
 @app.get("features")
-def get_features():
+async def get_features(session_id: str = Depends(get_session_id)):
     """
     Retrieves and stores the features for a character based on class, background, and race.
 
@@ -704,26 +651,23 @@ def get_features():
     Returns:
         dict: The features of the character.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    if not get_output("get_background") and get_output("get_background_context"):   
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    if not get_output("get_background", session_id) and get_output("get_background_context", session_id):   
         raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
-    background_name = get_output("get_background")['data']
-    background_context = get_output("get_background_context")['data']
-    if not get_output("get_race") and get_output("get_race_context"):   
+    background_name = get_output("get_background", session_id)['data']
+    background_context = get_output("get_background_context", session_id)['data']
+    if not get_output("get_race", session_id) and get_output("get_race_context", session_id):   
         raise HTTPException(status_code=400, detail="Race and Race Context not assigned")
-    race_name = get_output("get_race")['data']
-    race_context = get_output("get_race_context")['data']
-    if not get_output("get_features"):
-        features = inf.get_features(class_name, class_context, background_name, background_context, race_name, race_context)
-        store_output("get_features", features)
-    output_features = get_output("get_features")
-    return output_features
+    race_name = get_output("get_race", session_id)['data']
+    race_context = get_output("get_race_context", session_id)['data']
+    features = inf.get_features(class_name, class_context, background_name, background_context, race_name, race_context)
+    store_output("get_features", features, session_id)
 
 @app.get("traits")
-def get_traits():
+async def get_traits(session_id: str = Depends(get_session_id)):
     """
     Retrieves and stores character traits based on class, background, and race.
 
@@ -740,26 +684,23 @@ def get_traits():
     Returns:
         dict: The output traits retrieved and stored.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    if not get_output("get_background") and get_output("get_background_context"):   
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    if not get_output("get_background", session_id) and get_output("get_background_context", session_id):   
         raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
-    background_name = get_output("get_background")['data']
-    background_context = get_output("get_background_context")['data']
-    if not get_output("get_race") and get_output("get_race_context"):   
+    background_name = get_output("get_background", session_id)['data']
+    background_context = get_output("get_background_context", session_id)['data']
+    if not get_output("get_race", session_id) and get_output("get_race_context", session_id):   
         raise HTTPException(status_code=400, detail="Race and Race Context not assigned")
-    race_name = get_output("get_race")['data']
-    race_context = get_output("get_race_context")['data']
-    if not get_output("get_traits"):
-        traits = inf.get_traits(class_name, class_context, background_name, background_context, race_name, race_context)
-        store_output("get_traits", traits)
-    output_traits = get_output("get_traits")
-    return output_traits
+    race_name = get_output("get_race", session_id)['data']
+    race_context = get_output("get_race_context", session_id)['data']
+    traits = inf.get_traits(class_name, class_context, background_name, background_context, race_name, race_context)
+    store_output("get_traits", traits, session_id)
 
 @app.get("character_name")
-def get_character_name():
+async def get_character_name(session_id: str = Depends(get_session_id)):
     """
     Retrieves the character name based on class, background, and race information.
 
@@ -774,26 +715,23 @@ def get_character_name():
     Returns:
         str: The generated character name.
     """
-    if not get_output("get_class") and get_output("get_class_context"):
+    if not get_output("get_class", session_id) and get_output("get_class_context", session_id):
         raise HTTPException(status_code=400, detail="Class and Class Context not assigned")
-    class_name = get_output("get_class")['data']
-    class_context = get_output("get_class_context")['data']
-    if not get_output("get_background") and get_output("get_background_context"):   
+    class_name = get_output("get_class", session_id)['data']
+    class_context = get_output("get_class_context", session_id)['data']
+    if not get_output("get_background", session_id) and get_output("get_background_context", session_id):   
         raise HTTPException(status_code=400, detail="Background and Background Context not assigned")
-    background_name = get_output("get_background")['data']
-    background_context = get_output("get_background_context")['data']
-    if not get_output("get_race") and get_output("get_race_context"):   
+    background_name = get_output("get_background", session_id)['data']
+    background_context = get_output("get_background_context", session_id)['data']
+    if not get_output("get_race", session_id) and get_output("get_race_context", session_id):   
         raise HTTPException(status_code=400, detail="Race and Race Context not assigned")
-    race_name = get_output("get_race")['data']
-    race_context = get_output("get_race_context")['data']
-    if not get_output("get_character_name"):
-        character_name = inf.get_character_name(class_name, class_context, background_name, background_context, race_name, race_context)
-        store_output("get_character_name", character_name)
-    output_character_name = get_output("get_character_name")
-    return output_character_name
+    race_name = get_output("get_race", session_id)['data']
+    race_context = get_output("get_race_context", session_id)['data']
+    character_name = inf.get_character_name(class_name, class_context, background_name, background_context, race_name, race_context)
+    store_output("get_character_name", character_name, session_id)
 
 @app.get("alignment")
-def get_alignment():
+async def get_alignment(session_id: str = Depends(get_session_id)):
     """
     Determines and returns the alignment based on traits.
 
@@ -808,17 +746,14 @@ def get_alignment():
     Returns:
         dict: The alignment data retrieved from the output storage.
     """
-    if not get_output("get_traits"):
+    if not get_output("get_traits", session_id):
         raise HTTPException(status_code=400, detail="Traits not assigned")
-    traits = get_output("get_traits")['data']
-    if not get_output("get_alignment"):
-        alignment = inf.get_alignment(traits)
-        store_output("get_alignment", alignment)
-    output_alignment = get_output("get_alignment")
-    return output_alignment
+    traits = get_output("get_traits", session_id)['data']
+    alignment = inf.get_alignment(traits)
+    store_output("get_alignment", alignment, session_id)
 
 @app.get("/all")
-def get_all():
+async def get_all(request: Request):
     """
     Aggregates and executes a series of functions to gather all necessary 
     information for a Dungeons and Dragons character. This includes:
@@ -836,25 +771,26 @@ def get_all():
     This function calls each of these individual functions in sequence to 
     compile a complete set of character data.
     """
-    get_race()
-    get_race_context()
-    get_class()
-    get_background()
-    get_class_context()
-    get_background_context()
-    get_abilities()
-    get_ability_scores()
-    get_ability_modifier()
-    get_proficiency_modifier()
-    get_proficiencies_languages()
-    get_attacks()
-    get_armor_class()
-    get_initiative()
-    get_speed()
-    get_hit_dice()
-    get_hit_point_maximum()
-    get_current_hit_point()
-    get_features()
-    get_traits()
-    get_character_name()
-    get_alignment()
+    session_id = get_session_id(request)
+    await get_race(session_id)
+    await get_race_context(session_id)
+    await get_class(session_id)
+    await get_background(session_id)
+    await get_class_context(session_id)
+    await get_background_context(session_id)
+    await get_abilities(session_id)
+    await get_ability_scores(session_id)
+    await get_ability_modifier(session_id)
+    await get_proficiency_modifier(session_id)
+    await get_proficiencies_languages(session_id)
+    await get_attacks(session_id)
+    await get_armor_class(session_id)
+    await get_initiative(session_id)
+    await get_speed(session_id)
+    await get_hit_dice(session_id)
+    await get_hit_point_maximum(session_id)
+    await get_current_hit_point(session_id)
+    await get_features(session_id)
+    await get_traits(session_id)
+    await get_character_name(session_id)
+    await get_alignment(session_id)

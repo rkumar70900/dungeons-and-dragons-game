@@ -472,7 +472,6 @@ class askLLM():
             temperature=0.7
         )
         response = self.clean_response(response)
-        print(response)
         return self._retry_request(lambda: response)
     
     def get_alignment(self, traits, model="gpt-3.5-turbo"):

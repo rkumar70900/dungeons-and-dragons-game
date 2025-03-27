@@ -37,7 +37,8 @@ import pandas as pd
 from training_pipeline import ask_llm
 
 class dndCharacter():
-    def __init__(self):
+    def __init__(self, mongo_client):
+        self.client = mongo_client
         self.dep = dep.dependencies()
         self.ask = ask_llm.askLLM()
         self.abilities = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
@@ -50,7 +51,6 @@ class dndCharacter():
         self.skills = ["Acrobatics", "Sleight of Hand", "Stealth", "Arcana", "History", "Investigation", "Nature", "Religion",
                        "Animal Handling", "Insight", "Medicine", "Perception", "Survival", "Deception", "Intimidation", "Performance", "Persuasion",
                        "Athletics"]
-        self.client = self.dep.connect_mongo()
 
     def ability_scores(self):
         """
@@ -336,7 +336,6 @@ class dndCharacter():
         """
         attacks = []
         weapons_df = self.dep.character_weapons(self.client, weapons)
-        print(weapons_df)
         for i in range(len(weapons_df)):
             weapon = weapons_df.iloc[i]["weapon_name"]
             damage = weapons_df.iloc[i]["damage"]
@@ -372,7 +371,6 @@ class dndCharacter():
         if not armor:
             return 10 + dexterity_modifier
         armor_df = self.dep.character_armor(self.client, armor)
-        print(armor_df)
         armor_type = armor_df.iloc[0]["armor_type"]
         armor_class = int(armor_df.iloc[0]["armor_class"][:2])
         if armor_type == 'light':
